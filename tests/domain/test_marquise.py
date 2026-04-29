@@ -51,6 +51,9 @@ def test_march_grants_two_moves_for_one_action() -> None:
 
 
 def test_build_offered_in_every_ruled_clearing_with_open_slots() -> None:
+    """All clearings the Marquise rules with open slots should be reachable
+    for build, since with even 1 wood the cheapest building (cost 1) is
+    payable through the connected Marquise-ruled tree."""
     service = _service_in_marquise_daylight()
     state = service.state
     legal = service.rules.legal_actions(state, Faction.MARQUISE)
@@ -69,6 +72,29 @@ def test_build_offered_in_every_ruled_clearing_with_open_slots() -> None:
     )
     assert build_clearings == expected, (
         f"Build offered in {sorted(build_clearings)}, expected {sorted(expected)}"
+    )
+
+
+def test_build_filtered_when_no_reachable_wood() -> None:
+    service = _service_in_marquise_daylight()
+    state = service.state
+    ms = state.players[Faction.MARQUISE]
+    assert isinstance(ms, MarquiseState)
+    from root_game.domain.enums import TokenType
+
+    for clearing in state.board.clearings.values():
+        wood_count = sum(
+            1
+            for owner, kind in clearing.tokens
+            if owner == Faction.MARQUISE and kind == TokenType.WOOD
+        )
+        for _ in range(wood_count):
+            clearing.remove_token(Faction.MARQUISE, TokenType.WOOD)
+
+    legal = service.rules.legal_actions(state, Faction.MARQUISE)
+    builds = [a for a in legal if a.action_type == A_MARQUISE_BUILD]
+    assert builds == [], (
+        "With zero wood on the map, no paid build should be legal"
     )
 
 

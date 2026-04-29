@@ -74,6 +74,51 @@ def _ruler(state: GameState, clearing_id: int) -> Faction | None:
     return state.board.clearings[clearing_id].ruling_faction(eyrie_lords_of_forest=True)
 
 
+def _marquise_build_cost(ms: MarquiseState, building: BuildingType) -> int:
+    """Wood cost to build the next building of a given type (Law 6.5.4.III)."""
+    track_remaining = {
+        BuildingType.SAWMILL: ms.sawmills_remaining,
+        BuildingType.WORKSHOP: ms.workshops_remaining,
+        BuildingType.RECRUITER: ms.recruiters_remaining,
+    }[building]
+    placed = 6 - track_remaining
+    cost_table = [0, 1, 2, 3, 4]
+    return cost_table[min(placed, len(cost_table) - 1)]
+
+
+def _wood_in(clearing) -> int:
+    return sum(
+        1
+        for owner, kind in clearing.tokens
+        if owner == Faction.MARQUISE and kind == TokenType.WOOD
+    )
+
+
+def _connected_marquise_wood(state: GameState, start: int) -> int:
+    """Total Marquise wood reachable from `start` via clearings the
+    Marquise rules (the start clearing itself does not need to be ruled,
+    matching the rules engine's payment helper)."""
+    seen: set[int] = set()
+    frontier = [start]
+    total = 0
+    while frontier:
+        cid = frontier.pop()
+        if cid in seen:
+            continue
+        seen.add(cid)
+        clearing = state.board.clearings[cid]
+        if (
+            clearing.ruling_faction(eyrie_lords_of_forest=True) != Faction.MARQUISE
+            and cid != start
+        ):
+            continue
+        total += _wood_in(clearing)
+        for adj in state.board.adjacent_clearings(cid):
+            if adj not in seen:
+                frontier.append(adj)
+    return total
+
+
 # Marquise --------------------------------------------------------------
 
 class MarquiseSystem:
@@ -171,13 +216,23 @@ class MarquiseSystem:
                                 {"clearing": cid, "defender": enemy.name},
                             )
                         )
-            # Build (Law 6.5.4: choose any clearing you rule)
+            # Build (Law 6.5.4: choose any clearing you rule and pay wood)
             if _ruler(state, cid) == Faction.MARQUISE and clearing.open_slots() > 0:
+                reachable_wood = _connected_marquise_wood(state, cid)
+                track_remaining = {
+                    BuildingType.SAWMILL: ms.sawmills_remaining,
+                    BuildingType.WORKSHOP: ms.workshops_remaining,
+                    BuildingType.RECRUITER: ms.recruiters_remaining,
+                }
                 for kind in (
                     BuildingType.SAWMILL,
                     BuildingType.WORKSHOP,
                     BuildingType.RECRUITER,
                 ):
+                    if track_remaining[kind] <= 0:
+                        continue
+                    if reachable_wood < _marquise_build_cost(ms, kind):
+                        continue
                     actions.append(
                         Action(
                             Faction.MARQUISE,

@@ -654,7 +654,11 @@ class RulesEngine:
             clearing = state.board.clearings[cid]
             if clearing.ruling_faction(eyrie_lords_of_forest=True) != Faction.MARQUISE and cid != start:
                 continue
-            wood = clearing.token_count(Faction.MARQUISE)
+            wood = sum(
+                1
+                for owner, kind in clearing.tokens
+                if owner == Faction.MARQUISE and kind == TokenType.WOOD
+            )
             if wood:
                 result.append({"cid": cid, "wood": wood})
             for adj in state.board.adjacent_clearings(cid):
