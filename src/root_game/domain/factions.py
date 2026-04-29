@@ -279,6 +279,9 @@ class EyrieSystem:
     def begin_birdsong(state: GameState) -> None:
         es = state.players[Faction.EYRIE]
         assert isinstance(es, EyrieState)
+        # 7.5.1 reset per-Birdsong "Add to Decree" counters
+        es.decree_adds_this_birdsong = 0
+        es.decree_bird_added_this_birdsong = False
         # 7.4.1 Emergency Orders
         if not es.hand:
             state.draw_card(Faction.EYRIE)
@@ -323,16 +326,23 @@ class EyrieSystem:
         assert isinstance(es, EyrieState)
         actions: list[Action] = [Action(Faction.EYRIE, A_END_PHASE)]
         if state.current_phase == Phase.BIRDSONG:
-            # Add 1-2 cards to decree (only one bird allowed)
-            for col in DecreeColumn:
-                for card in es.hand:
-                    actions.append(
-                        Action(
-                            Faction.EYRIE,
-                            A_EYRIE_ADD_TO_DECREE,
-                            {"column": col.name, "card": card.card_id},
+            # Law 7.5.1: add up to 2 cards to the Decree per Birdsong, with
+            # at most one of them being a bird card.
+            if es.decree_adds_this_birdsong < 2:
+                for col in DecreeColumn:
+                    for card in es.hand:
+                        if (
+                            card.suit == Suit.BIRD
+                            and es.decree_bird_added_this_birdsong
+                        ):
+                            continue
+                        actions.append(
+                            Action(
+                                Faction.EYRIE,
+                                A_EYRIE_ADD_TO_DECREE,
+                                {"column": col.name, "card": card.card_id},
+                            )
                         )
-                    )
         if state.current_phase == Phase.DAYLIGHT:
             # Resolve decree (presented as 'resolve next decree slot' actions)
             for col, cards in es.decree.items():

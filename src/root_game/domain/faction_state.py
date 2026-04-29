@@ -82,6 +82,8 @@ class EyrieState(FactionState):
     )
     decree_resolved_this_turn: dict[DecreeColumn, list[bool]] = field(default_factory=dict)
     crafting_used_roosts: set[int] = field(default_factory=set)
+    decree_adds_this_birdsong: int = 0
+    decree_bird_added_this_birdsong: bool = False
 
     def __post_init__(self) -> None:
         self.faction = Faction.EYRIE

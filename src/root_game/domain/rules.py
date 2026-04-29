@@ -739,10 +739,20 @@ class RulesEngine:
         card = next((c for c in es.hand if c.card_id == card_id), None)
         if card is None:
             raise ValueError("Card not in hand.")
-        # Only one bird per Birdsong addition (7.4.2). Simplified: don't track,
-        # rely on player to comply per Law 1.1.3.
+        # Law 7.5.1: at most 2 cards per Birdsong, at most 1 bird.
+        if es.decree_adds_this_birdsong >= 2:
+            raise ValueError(
+                "Eyrie may add at most 2 cards to the Decree per Birdsong."
+            )
+        if card.suit == Suit.BIRD and es.decree_bird_added_this_birdsong:
+            raise ValueError(
+                "Eyrie may add at most 1 bird card to the Decree per Birdsong."
+            )
         es.hand.remove(card)
         es.decree[col].append(card)
+        es.decree_adds_this_birdsong += 1
+        if card.suit == Suit.BIRD:
+            es.decree_bird_added_this_birdsong = True
 
     def _handle_eyrie_resolve_decree_card(self, state: GameState, action: Action) -> None:
         es = state.players[Faction.EYRIE]
