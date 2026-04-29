@@ -171,32 +171,21 @@ class MarquiseSystem:
                                 {"clearing": cid, "defender": enemy.name},
                             )
                         )
-        if marching_possible:
-            actions.append(Action(Faction.MARQUISE, A_MARQUISE_MARCH))
-            # Build
-            if (
-                clearing.has_building(BuildingType.SAWMILL, Faction.MARQUISE)
-                or clearing.has_building(BuildingType.WORKSHOP, Faction.MARQUISE)
-                or clearing.has_building(BuildingType.RECRUITER, Faction.MARQUISE)
-                or _ruler(state, cid) == Faction.MARQUISE
-            ):
-                if (
-                    _ruler(state, cid) == Faction.MARQUISE
-                    and clearing.open_slots() > 0
+            # Build (Law 6.5.4: choose any clearing you rule)
+            if _ruler(state, cid) == Faction.MARQUISE and clearing.open_slots() > 0:
+                for kind in (
+                    BuildingType.SAWMILL,
+                    BuildingType.WORKSHOP,
+                    BuildingType.RECRUITER,
                 ):
-                    for kind in (
-                        BuildingType.SAWMILL,
-                        BuildingType.WORKSHOP,
-                        BuildingType.RECRUITER,
-                    ):
-                        actions.append(
-                            Action(
-                                Faction.MARQUISE,
-                                A_MARQUISE_BUILD,
-                                {"clearing": cid, "building": kind.name},
-                            )
+                    actions.append(
+                        Action(
+                            Faction.MARQUISE,
+                            A_MARQUISE_BUILD,
+                            {"clearing": cid, "building": kind.name},
                         )
-            # Overwork (spend matching card to place wood at a sawmill)
+                    )
+            # Overwork (Law 6.5.5: spend matching card to place wood at a sawmill)
             if clearing.has_building(BuildingType.SAWMILL, Faction.MARQUISE):
                 for card in ms.hand:
                     if card.suit == clearing.suit or card.suit == Suit.BIRD:
@@ -207,6 +196,8 @@ class MarquiseSystem:
                                 {"clearing": cid, "card": card.card_id},
                             )
                         )
+        if marching_possible:
+            actions.append(Action(Faction.MARQUISE, A_MARQUISE_MARCH))
         # Recruit (once per turn)
         if not ms.recruit_used_this_turn:
             recruiters_present = any(
