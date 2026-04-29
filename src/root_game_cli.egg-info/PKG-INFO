@@ -1,0 +1,57 @@
+Metadata-Version: 2.4
+Name: root-game-cli
+Version: 0.1.0
+Summary: CLI-first Root implementation with GUI-ready architecture.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest>=8.2.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0.0; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
+
+# Root_Project
+
+Python CLI-first implementation of the board game Root, designed so a GUI can be added with minimal refactoring.
+
+## Current Scope
+
+- CLI gameplay loop with legal action listing and turn progression
+- Core game state models for map, factions, cards, phases, and scoring
+- Rules engine with movement, battle, crafting, draw/discard, sympathy spread, and victory checks
+- Faction phase hooks for Marquise, Eyrie, Woodland Alliance, and Vagabond
+- Save/load snapshot utilities
+
+## Project Layout
+
+- `src/root_game/domain`: Rules and immutable/structured game models
+- `src/root_game/application`: Game service and turn orchestration API
+- `src/root_game/interfaces/cli`: Command-line adapter
+- `src/root_game/interfaces/gui`: GUI integration contracts (placeholder interfaces)
+- `src/root_game/infrastructure`: Persistence and utilities
+- `tests`: Domain, application, and interface tests
+
+## Setup
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e .[dev]
+```
+
+## Run
+
+```bash
+python -m root_game.main
+```
+
+## Test
+
+```bash
+pytest
+```
+
+## Coverage Roadmap
+
+- Add deeper faction-specific rule tests (decree, outrage, crafting edge cases)
+- Add integration tests that replay deterministic full games with fixed seeds
+- Add contract tests for future GUI adapter using `interfaces/gui/contracts.py`
