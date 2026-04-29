@@ -141,22 +141,25 @@ class Board:
     def autumn_map(cls) -> "Board":
         """Standard fall map.
 
-        Layout (corner indices 1, 5, 9, 12). Suits and slot counts use the
-        printed fall map; ruin clearings are 6, 7, 10, 11.
+        Layout (corner indices 1, 5, 9, 12). Suits and slot counts approximate
+        the printed fall map; ruin clearings are 6, 7, 10, 11 (each has a
+        ruin filling one slot per Law 2.2.4, leaving the other slot open).
+        Every clearing has at least 2 slots so the Marquise's setup
+        (Law 6.3.4) can always place 3 starting buildings in keep+adjacent.
         """
         clearing_specs: list[tuple[int, Suit, int, bool, bool]] = [
-            (1, Suit.FOX, 1, True, False),
-            (2, Suit.RABBIT, 2, False, False),
+            (1, Suit.FOX, 2, True, False),
+            (2, Suit.RABBIT, 3, False, False),
             (3, Suit.RABBIT, 2, False, True),
             (4, Suit.MOUSE, 2, False, True),
-            (5, Suit.MOUSE, 1, True, False),
-            (6, Suit.RABBIT, 1, False, False),
-            (7, Suit.FOX, 1, False, False),
-            (8, Suit.MOUSE, 2, False, False),
-            (9, Suit.FOX, 1, True, False),
-            (10, Suit.MOUSE, 1, False, False),
-            (11, Suit.RABBIT, 1, False, False),
-            (12, Suit.FOX, 1, True, False),
+            (5, Suit.MOUSE, 2, True, False),
+            (6, Suit.RABBIT, 2, False, False),
+            (7, Suit.FOX, 2, False, False),
+            (8, Suit.MOUSE, 3, False, False),
+            (9, Suit.FOX, 2, True, False),
+            (10, Suit.MOUSE, 2, False, False),
+            (11, Suit.RABBIT, 2, False, False),
+            (12, Suit.FOX, 2, True, False),
         ]
         clearings: dict[int, Clearing] = {}
         for cid, suit, slots, is_corner, on_river in clearing_specs:
