@@ -760,9 +760,22 @@ class RulesEngine:
         col = DecreeColumn[action.payload["column"]]
         if not es.decree[col]:
             raise ValueError("No decree cards in column.")
-        # Pop the first card and resolve a small action of its column type.
-        card = es.decree[col].pop(0)
-        # Simplified resolutions
+        # Law 7.6.2: every card in a column to the left must be
+        # serviced this turn before moving on to a later column.
+        for earlier in DecreeColumn:
+            if earlier == col:
+                break
+            if es.decree_resolved_this_turn[earlier] < len(es.decree[earlier]):
+                raise ValueError(
+                    f"Must resolve {earlier.name} before {col.name}."
+                )
+        # Each card grants exactly one matching action per turn.
+        idx = es.decree_resolved_this_turn[col]
+        if idx >= len(es.decree[col]):
+            raise ValueError(
+                f"All {col.name} cards have already been resolved this turn."
+            )
+        card = es.decree[col][idx]
         try:
             if col == DecreeColumn.RECRUIT:
                 self._eyrie_recruit_for(state, card.suit)
@@ -775,19 +788,24 @@ class RulesEngine:
         except ValueError:
             self._eyrie_turmoil(state)
             return
-        if card is not _LOYAL_VIZIER:
-            state.discard(card)
-        else:
-            es.decree[col].append(_LOYAL_VIZIER)
+        # Cards stay in the Decree across turns until Turmoil collapses
+        # the regime; just mark this slot serviced for the current turn.
+        es.decree_resolved_this_turn[col] = idx + 1
 
     def _eyrie_recruit_for(self, state: GameState, suit: Suit) -> None:
         es = state.players[Faction.EYRIE]
         assert isinstance(es, EyrieState)
+        # Charismatic leader (Law 7.3): place 2 warriors per Recruit
+        # card instead of 1.
+        warriors_to_place = 2 if es.leader == EyrieLeader.CHARISMATIC else 1
         for clearing in state.board.clearings.values():
             if clearing.has_building(BuildingType.ROOST, Faction.EYRIE):
-                if suit in (clearing.suit, Suit.BIRD) and es.warriors_in_supply > 0:
-                    clearing.add_warriors(Faction.EYRIE, 1)
-                    es.warriors_in_supply -= 1
+                if suit in (clearing.suit, Suit.BIRD):
+                    placed = min(warriors_to_place, es.warriors_in_supply)
+                    if placed <= 0:
+                        raise ValueError("No Eyrie warriors left in supply.")
+                    clearing.add_warriors(Faction.EYRIE, placed)
+                    es.warriors_in_supply -= placed
                     return
         raise ValueError("Cannot recruit (no matching roost).")
 
@@ -854,12 +872,20 @@ class RulesEngine:
         # 7.7.1 Humiliate
         bird_count = sum(
             1 for col in es.decree.values() for c in col
-            if c is _LOYAL_VIZIER or c.suit == Suit.BIRD
+            if _is_loyal_vizier(c) or c.suit == Suit.BIRD
         )
         es.victory_points = max(0, es.victory_points - bird_count)
-        # 7.7.2 Purge
+        # 7.7.2 Purge: discard every non-Loyal-Vizier card from the Decree.
         for col in DecreeColumn:
-            es.decree[col] = [c for c in es.decree[col] if c is _LOYAL_VIZIER]
+            keep: list[Card] = []
+            for c in es.decree[col]:
+                if _is_loyal_vizier(c):
+                    keep.append(c)
+                else:
+                    state.discard(c)
+            es.decree[col] = keep
+        # Reset per-turn resolution tracking; the regime has collapsed.
+        es.decree_resolved_this_turn = {col: 0 for col in DecreeColumn}
         # 7.7.3 Depose
         if es.leader is not None:
             es.used_leaders.append(es.leader)
@@ -869,7 +895,7 @@ class RulesEngine:
             es.used_leaders.clear()
         es.leader = es.available_leaders.pop(0)
         for col in DecreeColumn:
-            es.decree[col] = [c for c in es.decree[col] if c is not _LOYAL_VIZIER]
+            es.decree[col] = [c for c in es.decree[col] if not _is_loyal_vizier(c)]
         self._tuck_loyal_viziers(es, es.leader)
         # 7.7.4 Rest -> end Daylight, begin Evening
         if state.current_phase == Phase.DAYLIGHT:
@@ -1266,3 +1292,7 @@ _LOYAL_VIZIER = Card(
     suit=Suit.BIRD,
     kind=CardKind.STANDARD,
 )
+
+
+def _is_loyal_vizier(card: Card) -> bool:
+    return card.card_id == _LOYAL_VIZIER.card_id and card.name == _LOYAL_VIZIER.name

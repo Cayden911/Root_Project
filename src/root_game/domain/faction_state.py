@@ -80,7 +80,12 @@ class EyrieState(FactionState):
     decree: dict[DecreeColumn, list[Card]] = field(
         default_factory=lambda: {col: [] for col in DecreeColumn}
     )
-    decree_resolved_this_turn: dict[DecreeColumn, list[bool]] = field(default_factory=dict)
+    # Number of cards in each Decree column already resolved this turn.
+    # Cards stay in the Decree across turns until Turmoil (Law 7.7.2);
+    # we just track how many we've serviced this turn.
+    decree_resolved_this_turn: dict[DecreeColumn, int] = field(
+        default_factory=lambda: {col: 0 for col in DecreeColumn}
+    )
     crafting_used_roosts: set[int] = field(default_factory=set)
     decree_adds_this_birdsong: int = 0
     decree_bird_added_this_birdsong: bool = False

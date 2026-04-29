@@ -282,6 +282,9 @@ class EyrieSystem:
         # 7.5.1 reset per-Birdsong "Add to Decree" counters
         es.decree_adds_this_birdsong = 0
         es.decree_bird_added_this_birdsong = False
+        # 7.6.2 reset per-turn Decree resolution counters; cards stay
+        # in the Decree until Turmoil collapses it.
+        es.decree_resolved_this_turn = {col: 0 for col in DecreeColumn}
         # 7.4.1 Emergency Orders
         if not es.hand:
             state.draw_card(Faction.EYRIE)
@@ -344,29 +347,43 @@ class EyrieSystem:
                             )
                         )
         if state.current_phase == Phase.DAYLIGHT:
-            # Resolve decree (presented as 'resolve next decree slot' actions)
-            for col, cards in es.decree.items():
-                if cards:
-                    actions.append(
-                        Action(
-                            Faction.EYRIE,
-                            A_EYRIE_RESOLVE_DECREE_CARD,
-                            {"column": col.name},
-                        )
+            # Law 7.6.2: Resolve the Decree strictly left-to-right
+            # (Recruit -> Move -> Battle -> Build). For each column,
+            # the player must perform exactly one matching action per
+            # card in that column this turn. Cards stay in the Decree
+            # across turns; we track resolutions via
+            # decree_resolved_this_turn.
+            next_col = next(
+                (
+                    col
+                    for col in DecreeColumn
+                    if es.decree_resolved_this_turn[col] < len(es.decree[col])
+                ),
+                None,
+            )
+            if next_col is not None:
+                actions.append(
+                    Action(
+                        Faction.EYRIE,
+                        A_EYRIE_RESOLVE_DECREE_CARD,
+                        {"column": next_col.name},
                     )
-            # Build a roost in a ruled clearing matching a hand card
-            for clearing in state.board.clearings.values():
-                if (
-                    _ruler(state, clearing.clearing_id) == Faction.EYRIE
-                    and clearing.open_slots() > 0
-                ):
-                    actions.append(
-                        Action(
-                            Faction.EYRIE,
-                            A_EYRIE_BUILD_ROOST,
-                            {"clearing": clearing.clearing_id},
+                )
+            else:
+                # Once the Decree is fully resolved this turn, allow
+                # building a roost in a ruled clearing with open slots.
+                for clearing in state.board.clearings.values():
+                    if (
+                        _ruler(state, clearing.clearing_id) == Faction.EYRIE
+                        and clearing.open_slots() > 0
+                    ):
+                        actions.append(
+                            Action(
+                                Faction.EYRIE,
+                                A_EYRIE_BUILD_ROOST,
+                                {"clearing": clearing.clearing_id},
+                            )
                         )
-                    )
         return actions
 
 

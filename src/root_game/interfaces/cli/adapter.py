@@ -17,12 +17,13 @@ Public (always available):
   i / items       - Vagabond items, tracks, damaged, relationships
   b / board       - re-render the board
   p / players     - all players' VP, hand size, items, persistent effects
+  u / undo        - undo the most recent action
   ? / help        - show this help
 """
 
 from typing import Sequence
 
-from root_game.application.controllers import CallableController, Controller
+from root_game.application.controllers import CallableController, Controller, UndoRequested
 from root_game.application.service import GameService
 from root_game.domain.actions import Action
 from root_game.domain.enums import (
@@ -67,6 +68,8 @@ def build_human_controllers(
                 _render_board(service_ref[0])
             elif choice in {"p", "players"}:
                 _render_players(service_ref[0])
+            elif choice in {"u", "undo"}:
+                raise UndoRequested()
             else:
                 print("  Unknown command. Type ? for help.")
                 continue
@@ -76,7 +79,7 @@ def build_human_controllers(
 
 
 def _print_action_menu(faction: Faction, actions: Sequence[Action], label: str) -> None:
-    print(f"\n[{label}] Choose an action (number) or command (h/s/d/i/b/p/?):")
+    print(f"\n[{label}] Choose an action (number) or command (h/s/d/i/b/p/u/?):")
     for idx, action in enumerate(actions, 1):
         print(f"  {idx:>2}. {_format_action(action)}")
 
@@ -90,6 +93,7 @@ def _print_help() -> None:
     print("    i / items       Vagabond items, tracks, relationships")
     print("    b / board       Re-render the board")
     print("    p / players     Summary of all players")
+    print("    u / undo        Undo the most recent action")
     print("    ? / help        Show this help")
 
 

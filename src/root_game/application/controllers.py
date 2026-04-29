@@ -19,6 +19,10 @@ from root_game.domain.actions import Action
 from root_game.domain.enums import Faction
 
 
+class UndoRequested(Exception):
+    """Signal that the user requested undo from a controller prompt."""
+
+
 class Controller(ABC):
     @abstractmethod
     def choose(

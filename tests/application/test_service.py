@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from root_game.application.controllers import FirstActionController
 from root_game.application.service import GameService
 from root_game.domain.enums import Faction, Phase
@@ -28,3 +30,19 @@ def test_service_can_take_first_real_turn_actions() -> None:
         safety -= 1
     snap = service.snapshot()
     assert snap.legal_actions, "Game should expose at least 'end_phase'"
+
+
+def test_undo_reverts_most_recent_action() -> None:
+    service = _service()
+    before = deepcopy(service.state)
+    action = service.step()
+    assert action is not None
+    assert service.undo() is True
+    assert service.state == before
+
+
+def test_undo_only_tracks_one_action() -> None:
+    service = _service()
+    service.step()
+    assert service.undo() is True
+    assert service.undo() is False
